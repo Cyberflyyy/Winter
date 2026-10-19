@@ -8,12 +8,13 @@ import { useEffect, useState } from "react";
 import { SettingsModal } from "./SettingsModal";
 import { Sparkle } from "./ui/Icons";
 import { useStore } from "@/lib/store";
+import { useTeam } from "@/lib/team";
 
 export const NAV = [
   { href: "/today", label: "Today", title: "Today", icon: House },
   { href: "/habits", label: "Habits", title: "Habits", icon: Grid3x3 },
   { href: "/tasks", label: "Tasks", title: "Task Tracker", icon: SquareCheck },
-  { href: "/team", label: "Inube", title: "Inube", icon: Building2 },
+  { href: "/team", label: "Innube", title: "Innube", icon: Building2 },
   { href: "/goals", label: "Goals", title: "Goals", icon: Target },
   { href: "/insights", label: "Insights", title: "Insights", icon: ChartNoAxesColumn },
 ];
@@ -23,11 +24,15 @@ export function AppShell({ userId, email, children }: { userId: string; email: s
   const init = useStore((s) => s.init);
   const ready = useStore((s) => s.ready);
   const [settings, setSettings] = useState(false);
+  // Zakładka Innube tylko dla członków przestrzeni (reszta jej nie widzi)
+  const inTeam = useTeam((s) => !!s.workspace);
 
   useEffect(() => {
     void init(userId);
+    void useTeam.getState().load();
   }, [init, userId]);
 
+  const nav = NAV.filter((n) => n.href !== "/team" || inTeam);
   const current = NAV.find((n) => pathname.startsWith(n.href)) ?? NAV[0];
 
   return (
@@ -49,7 +54,7 @@ export function AppShell({ userId, email, children }: { userId: string; email: s
           </AnimatePresence>
 
           <nav className="hidden items-center gap-1 rounded-full border border-white/[0.07] bg-[oklch(15.5%_0_0)] p-1.5 md:flex">
-            {NAV.map((item) => {
+            {nav.map((item) => {
               const active = item === current;
               const Icon = item.icon;
               return (
@@ -105,7 +110,7 @@ export function AppShell({ userId, email, children }: { userId: string; email: s
       {/* Dolna nawigacja (telefon) */}
       <nav className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(0.6rem+env(safe-area-inset-bottom))] md:hidden">
         <div className="mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/[0.08] bg-[oklch(15.5%_0_0/0.86)] p-1.5 shadow-[0_10px_40px_rgba(0,0,0,.55)] backdrop-blur-xl">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = item === current;
             const Icon = item.icon;
             return (

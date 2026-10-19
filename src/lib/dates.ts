@@ -37,7 +37,7 @@ export function weekStart(key: string): string {
   return toKey(d);
 }
 
-/** Tydzień pracy (Inube) zaczyna się w poniedziałek. */
+/** Tydzień pracy (Innube) zaczyna się w poniedziałek. */
 export function workWeekStart(key: string): string {
   const d = fromKey(key);
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7));

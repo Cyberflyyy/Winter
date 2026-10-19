@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Building2, ChevronDown, ChevronLeft, ChevronRight, Inbox, Trash } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Inbox, Trash } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Burst } from "@/components/ui/Burst";
 import { Modal } from "@/components/ui/Modal";
@@ -48,10 +49,16 @@ export default function TeamPage() {
   const tasks = useTeam((s) => s.tasks);
   const loaded = useTeam((s) => !!s.loadedWeeks[ws]);
   const { list: members } = useMembers();
+  const router = useRouter();
 
   useEffect(() => {
     void useTeam.getState().load();
   }, []);
+
+  // Osoby spoza Innube nie mają tu czego szukać
+  useEffect(() => {
+    if (status === "ready" && !workspace) router.replace("/today");
+  }, [status, workspace, router]);
 
   useEffect(() => {
     if (workspace) void useTeam.getState().loadWeek(ws);
@@ -87,13 +94,12 @@ export default function TeamPage() {
     todayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [loaded, isThisWeek]);
 
-  if (status !== "ready")
+  if (!workspace)
     return (
       <div className="grid min-h-[50dvh] place-items-center">
         <div className="app-loader-ring h-7 w-7" />
       </div>
     );
-  if (!workspace) return <NoWorkspace />;
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -189,20 +195,6 @@ export default function TeamPage() {
 
       <TaskModal task={openTask} onClose={() => setOpenId(null)} />
     </div>
-  );
-}
-
-function NoWorkspace() {
-  return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card mx-auto mt-12 max-w-md p-8 text-center">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-        <Building2 size={26} />
-      </div>
-      <h3 className="title mt-4 text-lg">No team access yet</h3>
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        Add your account to the Inube workspace — ask to be added as a member.
-      </p>
-    </motion.div>
   );
 }
 

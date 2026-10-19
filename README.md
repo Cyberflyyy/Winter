@@ -6,7 +6,7 @@ Next.js 15 + Supabase + Tailwind 4 + Framer Motion.
 ## 1. Supabase
 
 1. Załóż projekt na [supabase.com](https://supabase.com) (darmowy plan wystarczy).
-2. **SQL Editor → New query** → wklej całą zawartość skrypt schematu bazy (trzymany lokalnie, poza repo) → **Run**.
+2. **SQL Editor → New query** → wklej skrypt schematu bazy (trzymany lokalnie, poza repo) → **Run**.
 3. **Authentication → Sign In / Providers → Email**: wyłącz **Confirm email**, żeby rejestracja działała od razu
    (albo zostaw włączone — wtedy trzeba kliknąć link z maila).
 4. **Project Settings → API**: skopiuj `Project URL` i `anon public` key.
@@ -37,6 +37,6 @@ Otwórz http://localhost:3000 → **Sign up**. Kolega robi to samo na swoim urz�
 - Kliknięcie nazwy nawyku w siatce Habits otwiera edycję/usuwanie. Kliknięcie tekstu zadania — edycja.
 - **Dni tygodnia** — nawyk dzienny może obowiązywać tylko w wybrane dni (np. siłownia pn/wt/czw/pt/sob).
   Pozostałe dni są szare w siatce, na Today lądują w „Not today” i nie przerywają serii ani nie obniżają procentów.
-- **Inube** — wspólna tablica firmy: 7 dni tygodnia (pon–nd) + backlog zadań bez terminu. Zadanie ma notatki,
-  osobę przypisaną i termin; zmiany kolegi pojawiają się na żywo. Żeby mieć dostęp, w ostatnim bloku
-  skrypt schematu podmień maile `ty@example.com` / `kolega@example.com` na adresy kont z aplikacji i uruchom go.
+- **Innube** — wspólna tablica firmy: 7 dni tygodnia (pon–nd) + backlog zadań bez terminu. Zadanie ma notatki,
+  osobę przypisaną i termin; zmiany kolegi pojawiają się na żywo. Żeby mieć dostęp, w skrypcie schematu
+  dopisz maile kont do członków Innube i uruchom go w Supabase.
