@@ -35,3 +35,8 @@ Otwórz http://localhost:3000 → **Sign up**. Kolega robi to samo na swoim urz�
 - **VS** — w Insights klikasz **VS** i widzisz swoją consistency obok kolegi (wykres, dni wygrane, ten tydzień).
   Kolega widzi tylko zagregowane procenty, nie nazwy Twoich nawyków (funkcja `get_daily_stats` w SQL).
 - Kliknięcie nazwy nawyku w siatce Habits otwiera edycję/usuwanie. Kliknięcie tekstu zadania — edycja.
+- **Dni tygodnia** — nawyk dzienny może obowiązywać tylko w wybrane dni (np. siłownia pn/wt/czw/pt/sob).
+  Pozostałe dni są szare w siatce, na Today lądują w „Not today” i nie przerywają serii ani nie obniżają procentów.
+- **Inube** — wspólna tablica firmy: 7 dni tygodnia (pon–nd) + backlog zadań bez terminu. Zadanie ma notatki,
+  osobę przypisaną i termin; zmiany kolegi pojawiają się na żywo. Żeby mieć dostęp, w ostatnim bloku
+  skrypt schematu podmień maile `ty@example.com` / `kolega@example.com` na adresy kont z aplikacji i uruchom go.

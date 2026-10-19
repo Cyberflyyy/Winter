@@ -35,8 +35,8 @@ interface State {
   dismissToast: (id: string) => void;
 
   setLog: (habit: Habit, date: string, status: LogStatus | null) => Promise<void>;
-  addHabit: (h: { name: string; color: string; frequency: Frequency }) => Promise<void>;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, "name" | "color" | "frequency" | "start_date" | "position">>) => Promise<void>;
+  addHabit: (h: { name: string; color: string; frequency: Frequency; days: number[] | null }) => Promise<void>;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, "name" | "color" | "frequency" | "days" | "start_date" | "position">>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
 
   loadWeek: (weekStart: string) => Promise<void>;
@@ -154,7 +154,7 @@ export const useStore = create<State>((set, get) => {
       if (error) fail(error, rollback);
     },
 
-    async addHabit({ name, color, frequency }) {
+    async addHabit({ name, color, frequency, days }) {
       const habits = get().habits;
       const temp: Habit = {
         id: uid(),
@@ -162,6 +162,7 @@ export const useStore = create<State>((set, get) => {
         name,
         color,
         frequency,
+        days,
         position: habits.length ? Math.max(...habits.map((h) => h.position)) + 1 : 0,
         start_date: todayKey(),
         created_at: new Date().toISOString(),

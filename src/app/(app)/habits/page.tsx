@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { HabitDialog } from "@/components/HabitDialog";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
@@ -9,7 +9,7 @@ import { Flame, IceCube, StarIcon } from "@/components/ui/Icons";
 import { Segmented } from "@/components/ui/Segmented";
 import { habitColor } from "@/lib/constants";
 import { MONTHS, MONTHS_SHORT, addDays, addMonths, daysInMonth, fromKey, monthStart, periodKey, todayKey, weekStart } from "@/lib/dates";
-import { bestStreak, currentStreak, logKey, pct, type LogMap } from "@/lib/stats";
+import { bestStreak, currentStreak, isCounted, isDue, logKey, pct, type LogMap } from "@/lib/stats";
 import { haptic, useStore } from "@/lib/store";
 import type { Frequency, Habit } from "@/lib/types";
 
@@ -54,7 +54,7 @@ function rowRate(h: Habit, cols: Col[], logs: LogMap): number {
   for (const c of cols) {
     if (c.future || c.key < start) continue;
     const s = logs[logKey(h.id, c.key)];
-    if (s === "frozen") continue;
+    if (s === "frozen" || !isCounted(h, c.key, s)) continue;
     total++;
     if (s === "done") done++;
   }
@@ -81,7 +81,7 @@ export default function HabitsPage() {
     for (const h of rows) {
       if (periodKey(h.frequency, h.start_date) > c.key) continue;
       const s = logs[logKey(h.id, c.key)];
-      if (s === "frozen") continue;
+      if (s === "frozen" || !isCounted(h, c.key, s)) continue;
       total++;
       if (s === "done") done++;
     }
@@ -92,9 +92,10 @@ export default function HabitsPage() {
 
   // Podsumowanie bieżącego okresu
   const nowKey = periodKey(tab, today);
-  const doneNow = rows.filter((h) => logs[logKey(h.id, nowKey)] === "done").length;
-  const frozenNow = rows.filter((h) => logs[logKey(h.id, nowKey)] === "frozen").length;
-  const nowPct = pct(doneNow, rows.length - frozenNow);
+  const dueNow = rows.filter((h) => isCounted(h, nowKey, logs[logKey(h.id, nowKey)]));
+  const doneNow = dueNow.filter((h) => logs[logKey(h.id, nowKey)] === "done").length;
+  const frozenNow = dueNow.filter((h) => logs[logKey(h.id, nowKey)] === "frozen").length;
+  const nowPct = pct(doneNow, dueNow.length - frozenNow);
   const periodWord = tab === "daily" ? "today" : tab === "weekly" ? "this week" : "this month";
 
   const c = fromKey(cursor);
@@ -117,7 +118,7 @@ export default function HabitsPage() {
               </motion.p>
             </AnimatePresence>
             <p className="mt-1 text-[15px] font-semibold">
-              {doneNow}/{rows.length} habits done {periodWord}
+              {doneNow}/{dueNow.length} habits done {periodWord}
             </p>
           </div>
           <div className="flex gap-2.5">
@@ -322,10 +323,18 @@ function Row({
         <span className="line-clamp-2 text-[11px] font-bold uppercase leading-[1.25] tracking-[0.04em] text-muted-foreground transition-colors [overflow-wrap:anywhere] group-hover:text-foreground sm:text-[12.5px]">
           {habit.name}
         </span>
+        <Pencil size={11} className="ml-auto shrink-0 text-muted-foreground opacity-40 transition-opacity group-hover:opacity-100 lg:opacity-0" />
       </button>
       {cols.map((c, i) => (
         <div key={c.key} className={`grid place-items-center py-2.5 ${i === curIdx ? "bg-primary/[0.04]" : ""}`}>
-          <Cell status={logs[logKey(habit.id, c.key)]} current={c.current} future={c.future} delay={ri * 0.025 + i * 0.006} onClick={() => onToggle(habit, c.key)} />
+          <Cell
+            status={logs[logKey(habit.id, c.key)]}
+            current={c.current}
+            future={c.future}
+            off={!isDue(habit, c.key)}
+            delay={ri * 0.025 + i * 0.006}
+            onClick={() => onToggle(habit, c.key)}
+          />
         </div>
       ))}
       <div className="flex items-center justify-end gap-2.5 pr-4 text-[13px] font-semibold tabular-nums sm:gap-3 sm:pr-5 sm:text-[14px]">
@@ -341,9 +350,38 @@ function Row({
   );
 }
 
-function Cell({ status, current, future, delay, onClick }: { status?: string; current: boolean; future: boolean; delay: number; onClick: () => void }) {
+function Cell({
+  status,
+  current,
+  future,
+  off,
+  delay,
+  onClick,
+}: {
+  status?: string;
+  current: boolean;
+  future: boolean;
+  /** Dzień poza harmonogramem nawyku — szary, nieklikalny (chyba że już coś w nim jest). */
+  off: boolean;
+  delay: number;
+  onClick: () => void;
+}) {
   const done = status === "done";
   const frozen = status === "frozen";
+  const rest = off && !status;
+  if (rest)
+    return (
+      <motion.span
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: Math.min(delay, 0.5), type: "spring", stiffness: 380, damping: 24 }}
+        className="grid h-[30px] w-[30px] place-items-center rounded-full bg-white/[0.045] xl:h-[32px] xl:w-[32px]"
+        title="Rest day"
+        aria-label="Rest day"
+      >
+        <span className="h-[3px] w-2 rounded-full bg-white/[0.12]" />
+      </motion.span>
+    );
   return (
     <motion.button
       disabled={future}

@@ -1,11 +1,12 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Modal } from "./ui/Modal";
 import { Segmented } from "./ui/Segmented";
 import { HABIT_COLORS } from "@/lib/constants";
+import { MON_FIRST, WEEKDAYS_SHORT } from "@/lib/dates";
 import { useStore } from "@/lib/store";
 import type { Frequency, Habit } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export function HabitDialog({ open, onClose, habit, defaultFrequency = "daily" }
   const [name, setName] = useState("");
   const [color, setColor] = useState("blue");
   const [frequency, setFrequency] = useState<Frequency>(defaultFrequency);
+  const [days, setDays] = useState<number[]>(MON_FIRST);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export function HabitDialog({ open, onClose, habit, defaultFrequency = "daily" }
     setName(habit?.name ?? "");
     setColor(habit?.color ?? HABIT_COLORS[Math.floor(Math.random() * 4)].id);
     setFrequency(habit?.frequency ?? defaultFrequency);
+    setDays(habit?.days?.length ? habit.days : MON_FIRST);
     setConfirmDelete(false);
   }, [open, habit, defaultFrequency]);
 
@@ -37,8 +40,9 @@ export function HabitDialog({ open, onClose, habit, defaultFrequency = "daily" }
     e.preventDefault();
     const n = name.trim();
     if (!n) return;
-    if (habit) void updateHabit(habit.id, { name: n, color, frequency });
-    else void addHabit({ name: n, color, frequency });
+    const d = frequency === "daily" && days.length < 7 ? [...days].sort((a, b) => a - b) : null;
+    if (habit) void updateHabit(habit.id, { name: n, color, frequency, days: d });
+    else void addHabit({ name: n, color, frequency, days: d });
     onClose();
   }
 
@@ -86,6 +90,47 @@ export function HabitDialog({ open, onClose, habit, defaultFrequency = "daily" }
             ]}
           />
         </div>
+
+        <AnimatePresence initial={false}>
+          {frequency === "daily" && (
+            <motion.div
+              key="days"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="mb-2 flex items-baseline justify-between">
+                <p className="label">Days</p>
+                <span className="text-[12px] text-muted-foreground">{days.length === 7 ? "Every day" : `${days.length}× a week`}</span>
+              </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {MON_FIRST.map((wd) => {
+                  const on = days.includes(wd);
+                  return (
+                    <motion.button
+                      type="button"
+                      key={wd}
+                      whileTap={{ scale: 0.88 }}
+                      onClick={() => {
+                        // Co najmniej jeden dzień musi zostać
+                        if (on && days.length === 1) return;
+                        setDays(on ? days.filter((x) => x !== wd) : [...days, wd]);
+                      }}
+                      aria-pressed={on}
+                      className={`h-11 rounded-xl border text-[12px] font-semibold uppercase tracking-[0.04em] transition-colors ${
+                        on ? "border-transparent bg-primary text-primary-foreground" : "border-white/[0.1] text-muted-foreground hover:border-white/25 hover:text-foreground"
+                      }`}
+                    >
+                      {WEEKDAYS_SHORT[wd]}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="flex items-center gap-2 pt-1">
           {habit && (

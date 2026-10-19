@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChartNoAxesColumn, Grid3x3, House, Settings, SquareCheck, Target } from "lucide-react";
+import { Building2, ChartNoAxesColumn, Grid3x3, House, Settings, SquareCheck, Target } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,6 +13,7 @@ export const NAV = [
   { href: "/today", label: "Today", title: "Today", icon: House },
   { href: "/habits", label: "Habits", title: "Habits", icon: Grid3x3 },
   { href: "/tasks", label: "Tasks", title: "Task Tracker", icon: SquareCheck },
+  { href: "/team", label: "Inube", title: "Inube", icon: Building2 },
   { href: "/goals", label: "Goals", title: "Goals", icon: Target },
   { href: "/insights", label: "Insights", title: "Insights", icon: ChartNoAxesColumn },
 ];

@@ -37,6 +37,13 @@ export function weekStart(key: string): string {
   return toKey(d);
 }
 
+/** Tydzień pracy (Inube) zaczyna się w poniedziałek. */
+export function workWeekStart(key: string): string {
+  const d = fromKey(key);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return toKey(d);
+}
+
 export function monthStart(key: string): string {
   const d = fromKey(key);
   return toKey(new Date(d.getFullYear(), d.getMonth(), 1));
@@ -61,6 +68,8 @@ export const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "A
 export const MONTHS_SEPT = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** Kolejność dni od poniedziałku (indeksy jak w Date.getDay). */
+export const MON_FIRST = [1, 2, 3, 4, 5, 6, 0];
 
 export function formatDMY(key: string): string {
   const [y, m, d] = key.split("-");

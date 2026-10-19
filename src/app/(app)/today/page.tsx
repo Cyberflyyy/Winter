@@ -10,7 +10,7 @@ import { Flame, IceCube } from "@/components/ui/Icons";
 import { Ring } from "@/components/ui/Ring";
 import { habitColor } from "@/lib/constants";
 import { MONTHS, WEEKDAYS, fromKey, periodKey, todayKey } from "@/lib/dates";
-import { currentStreak, freezeTokens, logKey, pct } from "@/lib/stats";
+import { currentStreak, freezeTokens, isCounted, logKey, pct } from "@/lib/stats";
 import { haptic, useStore } from "@/lib/store";
 import type { Habit, LogStatus } from "@/lib/types";
 
@@ -19,11 +19,15 @@ export default function TodayPage() {
   const logs = useStore((s) => s.logs);
   const setLog = useStore((s) => s.setLog);
   const [dialog, setDialog] = useState(false);
+  const [editing, setEditing] = useState<Habit | null>(null);
   const [celebrate, setCelebrate] = useState(0);
 
   const today = todayKey();
   const d = fromKey(today);
-  const daily = useMemo(() => habits.filter((h) => h.frequency === "daily").sort((a, b) => a.position - b.position), [habits]);
+  const allDaily = useMemo(() => habits.filter((h) => h.frequency === "daily").sort((a, b) => a.position - b.position), [habits]);
+  // Nawyki z dniem wolnym dzisiaj lądują w osobnej, przygaszonej sekcji (chyba że i tak odhaczone)
+  const daily = allDaily.filter((h) => isCounted(h, today, logs[logKey(h.id, today)]));
+  const offToday = allDaily.filter((h) => !daily.includes(h));
   const weekly = habits.filter((h) => h.frequency === "weekly");
   const monthly = habits.filter((h) => h.frequency === "monthly");
 
@@ -38,7 +42,7 @@ export default function TodayPage() {
     const next: LogStatus | null = cur === "done" ? null : "done";
     haptic(next ? 12 : 6);
     void setLog(h, p, next);
-    if (next && h.frequency === "daily") {
+    if (next && daily.includes(h)) {
       const willBe = doneCount + 1;
       if (willBe === daily.length - frozenCount && willBe > 0) {
         setTimeout(() => setCelebrate((c) => c + 1), 250);
@@ -111,17 +115,23 @@ export default function TodayPage() {
         <EmptyState onAdd={() => setDialog(true)} />
       ) : (
         <>
-          <HabitList habits={daily} today={today} logs={logs} onToggle={toggle} onFreeze={freeze} showFreeze={tokens > 0} />
+          <HabitList habits={daily} today={today} logs={logs} onToggle={toggle} onEdit={setEditing} onFreeze={freeze} showFreeze={tokens > 0} />
+          {offToday.length > 0 && (
+            <>
+              <p className="label mx-1 mb-3 mt-10">Not today</p>
+              <HabitList habits={offToday} today={today} logs={logs} onToggle={toggle} onEdit={setEditing} compact off />
+            </>
+          )}
           {weekly.length > 0 && (
             <>
               <p className="label mx-1 mb-3 mt-10">This week</p>
-              <HabitList habits={weekly} today={today} logs={logs} onToggle={toggle} compact />
+              <HabitList habits={weekly} today={today} logs={logs} onToggle={toggle} onEdit={setEditing} compact />
             </>
           )}
           {monthly.length > 0 && (
             <>
               <p className="label mx-1 mb-3 mt-10">This month</p>
-              <HabitList habits={monthly} today={today} logs={logs} onToggle={toggle} compact />
+              <HabitList habits={monthly} today={today} logs={logs} onToggle={toggle} onEdit={setEditing} compact />
             </>
           )}
           <div className="mt-8 flex justify-center">
@@ -133,6 +143,7 @@ export default function TodayPage() {
       )}
 
       <HabitDialog open={dialog} onClose={() => setDialog(false)} />
+      <HabitDialog open={!!editing} habit={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
@@ -153,17 +164,21 @@ function HabitList({
   today,
   logs,
   onToggle,
+  onEdit,
   onFreeze,
   showFreeze,
   compact,
+  off,
 }: {
   habits: Habit[];
   today: string;
   logs: Record<string, LogStatus>;
   onToggle: (h: Habit) => void;
+  onEdit: (h: Habit) => void;
   onFreeze?: (h: Habit) => void;
   showFreeze?: boolean;
   compact?: boolean;
+  off?: boolean;
 }) {
   return (
     <div className={`grid gap-3 sm:gap-5 md:grid-cols-2 ${compact ? "" : "mt-9 sm:mt-14"}`}>
@@ -175,8 +190,10 @@ function HabitList({
           status={logs[logKey(h.id, periodKey(h.frequency, today))]}
           streak={currentStreak(h, logs, today)}
           onToggle={() => onToggle(h)}
+          onEdit={() => onEdit(h)}
           onFreeze={onFreeze ? () => onFreeze(h) : undefined}
           showFreeze={showFreeze}
+          off={off}
         />
       ))}
     </div>
@@ -188,16 +205,20 @@ function HabitCard({
   status,
   streak,
   onToggle,
+  onEdit,
   onFreeze,
   showFreeze,
+  off,
   index,
 }: {
   habit: Habit;
   status?: LogStatus;
   streak: number;
   onToggle: () => void;
+  onEdit: () => void;
   onFreeze?: () => void;
   showFreeze?: boolean;
+  off?: boolean;
   index: number;
 }) {
   const [burst, setBurst] = useState(0);
@@ -208,9 +229,10 @@ function HabitCard({
     <motion.div
       layout
       initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: off ? 0.45 : 1, y: 0 }}
       transition={{ duration: 0.45, delay: Math.min(index * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] }}
-      className={`group flex items-center gap-3.5 rounded-[1.35rem] border p-3 transition-colors duration-300 sm:gap-5 sm:p-[14px] ${
+      title={off ? "Rest day — not scheduled today" : undefined}
+      className={`group flex items-center gap-3.5 rounded-[1.35rem] border p-3 transition-colors duration-300 sm:gap-5 sm:p-[14px] ${off ? "grayscale" : ""} ${
         frozen
           ? "border-ice/25 bg-[oklch(19%_0.03_235/0.45)]"
           : done
@@ -258,13 +280,15 @@ function HabitCard({
 
       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: habitColor(habit.color) }} />
 
-      <span
-        className={`min-w-0 flex-1 truncate text-[15px] font-semibold transition-colors duration-300 sm:text-[17px] ${
+      <button
+        onClick={onEdit}
+        title="Edit habit"
+        className={`min-w-0 flex-1 truncate text-left text-[15px] font-semibold transition-colors duration-300 sm:text-[17px] ${
           done ? "text-muted-foreground line-through decoration-[1.5px]" : frozen ? "text-ice" : "text-foreground"
         }`}
       >
         {habit.name}
-      </span>
+      </button>
 
       {onFreeze && !done && (showFreeze || frozen) && (
         <motion.button

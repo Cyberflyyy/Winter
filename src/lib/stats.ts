@@ -1,10 +1,19 @@
 import { FREEZE_START, PERFECT_DAYS_PER_TOKEN } from "./constants";
-import { addDays, addMonths, periodKey, prevPeriod, range } from "./dates";
+import { addDays, addMonths, fromKey, periodKey, prevPeriod, range } from "./dates";
 import type { DayStat, Frequency, Habit, LogStatus } from "./types";
 
 export type LogMap = Record<string, LogStatus>;
 
 export const logKey = (habitId: string, date: string) => `${habitId}|${date}`;
+
+/** Czy nawyk obowiązuje w danym okresie. Dzienny z wybranymi dniami — tylko w te dni; reszta zawsze. */
+export function isDue(habit: Habit, key: string): boolean {
+  if (habit.frequency !== "daily" || !habit.days?.length || habit.days.length === 7) return true;
+  return habit.days.includes(fromKey(key).getDay());
+}
+
+/** Okres się liczy, jeśli nawyk wtedy obowiązywał albo i tak został odhaczony. */
+export const isCounted = (habit: Habit, key: string, s: LogStatus | undefined) => !!s || isDue(habit, key);
 
 export function pct(done: number, total: number): number {
   return total > 0 ? Math.round((done / total) * 100) : 0;
@@ -16,15 +25,18 @@ function nextPeriod(freq: Frequency, key: string): string {
   return addDays(key, 1);
 }
 
-/** Aktualna seria — jeśli bieżący okres nie jest jeszcze odhaczony, liczy od poprzedniego. */
+/** Aktualna seria — jeśli bieżący okres nie jest jeszcze odhaczony, liczy od poprzedniego.
+ *  Dni wolne (poza harmonogramem) nie przerywają serii. */
 export function currentStreak(habit: Habit, logs: LogMap, today: string): number {
   const start = periodKey(habit.frequency, habit.start_date);
   let p = periodKey(habit.frequency, today);
   if (!logs[logKey(habit.id, p)]) p = prevPeriod(habit.frequency, p);
   let n = 0;
-  while (p >= start && logs[logKey(habit.id, p)]) {
-    if (logs[logKey(habit.id, p)] === "done") n++;
-    p = prevPeriod(habit.frequency, p);
+  for (; p >= start; p = prevPeriod(habit.frequency, p)) {
+    const s = logs[logKey(habit.id, p)];
+    if (!isCounted(habit, p, s)) continue;
+    if (!s) break;
+    if (s === "done") n++;
   }
   return n;
 }
@@ -38,7 +50,7 @@ export function bestStreak(habit: Habit, logs: LogMap, today: string): number {
     if (s === "done") {
       run++;
       best = Math.max(best, run);
-    } else if (!s) {
+    } else if (!s && isDue(habit, p)) {
       run = 0;
     }
   }
@@ -54,7 +66,7 @@ export function habitRate(habit: Habit, logs: LogMap, from: string, to: string, 
   let total = 0;
   for (; p <= end; p = nextPeriod(f, p)) {
     const s = logs[logKey(habit.id, p)];
-    if (s === "frozen") continue;
+    if (s === "frozen" || !isCounted(habit, p, s)) continue;
     total++;
     if (s === "done") done++;
   }
@@ -70,7 +82,7 @@ export function dailyStats(habits: Habit[], logs: LogMap, from: string, to: stri
     for (const h of daily) {
       if (h.start_date > day) continue;
       const s = logs[logKey(h.id, day)];
-      if (s === "frozen") continue;
+      if (s === "frozen" || !isCounted(h, day, s)) continue;
       total++;
       if (s === "done") done++;
     }
@@ -94,7 +106,7 @@ export function freezeTokens(habits: Habit[], logs: LogMap, today: string): numb
   const first = daily.reduce((m, h) => (h.start_date < m ? h.start_date : m), today);
   let perfect = 0;
   for (const day of range(first, today)) {
-    const active = daily.filter((h) => h.start_date <= day);
+    const active = daily.filter((h) => h.start_date <= day && isDue(h, day));
     if (active.length && active.every((h) => logs[logKey(h.id, day)] === "done")) perfect++;
   }
   const used = Object.values(logs).filter((s) => s === "frozen").length;

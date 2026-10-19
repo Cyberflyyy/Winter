@@ -12,6 +12,8 @@ export interface Habit {
   name: string;
   color: string;
   frequency: Frequency;
+  /** Dni tygodnia dla nawyku dziennego (0 = niedziela … 6 = sobota); null = codziennie. */
+  days: number[] | null;
   position: number;
   start_date: string;
   created_at: string;
@@ -58,6 +60,25 @@ export interface Goal {
   status: GoalStatus;
   pinned: boolean;
   milestones: Milestone[];
+  created_at: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+}
+
+export interface TeamTask {
+  id: string;
+  workspace_id: string;
+  created_by: string | null;
+  assignee: string | null;
+  /** null = backlog (bez terminu) */
+  date: string | null;
+  title: string;
+  notes: string;
+  done: boolean;
+  position: number;
   created_at: string;
 }
 
