@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { USER_EMAIL_HEADER, USER_ID_HEADER } from "./headers";
 
 const PUBLIC_PATHS = ["/login", "/auth"];
 
@@ -23,9 +24,9 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims weryfikuje JWT lokalnie (klucze asymetryczne); przy starym sekrecie HS256 pyta serwer Auth jak getUser
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
@@ -40,7 +41,18 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/today";
     return redirectWithCookies(url, response);
   }
-  return response;
+
+  // Zawsze nadpisujemy — klient nie może podsunąć własnych wartości
+  const headers = new Headers(request.headers);
+  headers.delete(USER_ID_HEADER);
+  headers.delete(USER_EMAIL_HEADER);
+  if (user) {
+    headers.set(USER_ID_HEADER, user.sub);
+    headers.set(USER_EMAIL_HEADER, encodeURIComponent(String(user.email ?? "")));
+  }
+  const next = NextResponse.next({ request: { headers } });
+  response.cookies.getAll().forEach((c) => next.cookies.set(c));
+  return next;
 }
 
 function redirectWithCookies(url: URL, from: NextResponse) {
